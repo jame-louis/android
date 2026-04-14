@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Android 技能树</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="page">
+        <header class="header">
+            <h1>Android 程序设计与应用 · 技能树</h1>
+            <div class="progress-panel" id="progressPanel">
+                <div class="progress-total">
+                    <span class="progress-label">总进度</span>
+                    <div class="progress-value-container">
+                        <span class="progress-value" id="totalProgress">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 6px; font-size: 11px; color: var(--text-muted);">
+                        <span><span id="completedCount">0</span> 已完成</span>
+                        <span><span id="unlockedCount">0</span> 可学习</span>
+                    </div>
+                </div>
+                <div class="progress-modules" id="moduleProgress"></div>
+            </div>
+            <div class="header-actions">
+                <button class="complete-all-btn" id="completeAllBtn" title="一键完成所有可学习的技能">完成全部</button>
+                <button class="reset-btn" id="resetBtn" title="重置所有进度 (Ctrl+R)">重置进度</button>
+            </div>
+        </header>
+
+        <div class="tree-container" id="treeContainer">
+            <svg class="connections" id="connections" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="modules-layer" id="modulesLayer"></div>
+            <div class="nodes-layer" id="nodesLayer"></div>
+        </div>
+
+        <div class="tooltip" id="tooltip" role="tooltip">
+            <div class="tooltip-header" id="ttHeader"></div>
+            <div class="tooltip-meta" id="ttMeta"></div>
+            <div class="tooltip-prereqs" id="ttPrereqs"></div>
+            <div class="tooltip-status" id="ttStatus"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
