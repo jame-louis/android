@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Android 技能树</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="page">
         <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar" role="complementary" aria-label="技能概览">
             <div class="sidebar-header">
-                <h2>技能概览</h2>
+                <h2>学习面板</h2>
                 <button class="sidebar-toggle" id="sidebarToggle" aria-label="折叠侧边栏">
                     <span aria-hidden="true">◀</span>
                 </button>
@@ -21,11 +24,12 @@
             <div class="search-box">
                 <input type="search" id="skillSearch" placeholder="搜索技能..." aria-label="搜索技能">
                 <span class="search-icon" aria-hidden="true">🔍</span>
+                <button class="search-clear" id="searchClear" aria-label="清除搜索">×</button>
             </div>
 
             <!-- Quick Stats -->
             <section class="quick-stats" aria-label="学习统计">
-                <h3>学习统计</h3>
+                <div class="section-header">学习进度</div>
                 <div class="stat-grid">
                     <div class="stat-item">
                         <span class="stat-value" id="statCompleted">0</span>
@@ -47,20 +51,20 @@
             </section>
 
             <!-- Module Legend -->
-            <section class="module-legend" aria-label="模块分类">
-                <h3>技能模块</h3>
+            <section class="module-legend" aria-label="技能模块">
+                <div class="section-header">技能模块</div>
                 <ul class="legend-list" id="legendList" role="list"></ul>
             </section>
 
             <!-- Next Steps -->
             <section class="next-steps" aria-label="下一步学习">
-                <h3>推荐下一步</h3>
+                <div class="section-header">推荐学习</div>
                 <ul class="next-list" id="nextList" role="list">
                     <li class="next-empty">完成技能后查看推荐</li>
                 </ul>
             </section>
 
-            <!-- Actions -->
+            <!-- Sidebar Actions -->
             <div class="sidebar-actions">
                 <button class="action-btn primary" id="completeAllBtn" title="一键完成所有可学习的技能">
                     <span aria-hidden="true">✨</span> 完成全部可学习
@@ -72,14 +76,18 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" role="main">
             <!-- Header -->
             <header class="header">
-                <h1>Android 程序设计与应用 · 技能树</h1>
-                <div class="progress-bar-inline">
-                    <span class="progress-text" id="headerProgress">0%</span>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="headerProgressFill"></div>
+                <h1>Android 程序设计 · 技能树</h1>
+                <div class="header-progress-ring" aria-label="总体进度">
+                    <svg viewBox="0 0 56 56">
+                        <circle class="ring-bg" cx="28" cy="28" r="24"/>
+                        <circle class="ring-fill" cx="28" cy="28" r="24" stroke-dasharray="${2 * Math.PI * 24}" stroke-dashoffset="${2 * Math.PI * 24}"/>
+                    </svg>
+                    <div class="header-progress-text">
+                        <span class="value" id="headerProgress">0%</span>
+                        <span class="label">进度</span>
                     </div>
                 </div>
             </header>
@@ -87,49 +95,52 @@
             <!-- Toolbar -->
             <div class="toolbar" role="toolbar" aria-label="视图控制">
                 <div class="zoom-controls">
-                    <button class="zoom-btn" id="zoomOut" aria-label="缩小">
+                    <button class="zoom-btn" id="zoomOut" aria-label="缩小" title="缩小 (Ctrl+滚轮)">
                         <span aria-hidden="true">−</span>
                     </button>
                     <span class="zoom-level" id="zoomLevel">100%</span>
-                    <button class="zoom-btn" id="zoomIn" aria-label="放大">
+                    <button class="zoom-btn" id="zoomIn" aria-label="放大" title="放大 (Ctrl+滚轮)">
                         <span aria-hidden="true">+</span>
                     </button>
-                    <button class="zoom-btn" id="zoomFit" aria-label="适应窗口">
+                    <button class="zoom-btn" id="zoomFit" aria-label="适应窗口" title="适应窗口">
                         <span aria-hidden="true">⤢</span>
                     </button>
                 </div>
-                <div class="view-options">
-                    <button class="view-btn active" id="viewAll" aria-pressed="true">全部</button>
-                    <button class="view-btn" id="viewCompleted" aria-pressed="false">已完成</button>
-                    <button class="view-btn" id="viewUnlocked" aria-pressed="false">可学习</button>
+                <div class="view-options" role="group" aria-label="筛选视图">
+                    <button class="view-btn active" id="viewAll" aria-pressed="true">
+                        全部 <span class="count">23</span>
+                    </button>
+                    <button class="view-btn" id="viewCompleted" aria-pressed="false">
+                        已完成 <span class="count">0</span>
+                    </button>
+                    <button class="view-btn" id="viewUnlocked" aria-pressed="false">
+                        可学习 <span class="count">0</span>
+                    </button>
                 </div>
             </div>
 
             <!-- Tree Container -->
-            <div class="tree-container" id="treeContainer" role="region" aria-label="技能树">
+            <div class="tree-container" id="treeContainer" role="region" aria-label="技能树图谱">
                 <svg class="connections" id="connections" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
                 <div class="modules-layer" id="modulesLayer" aria-hidden="true"></div>
                 <div class="nodes-layer" id="nodesLayer"></div>
             </div>
         </main>
 
-        <!-- Detail Panel (shown when skill is selected) -->
-        <aside class="detail-panel" id="detailPanel" aria-label="技能详情" hidden>
-            <div class="detail-header">
-                <button class="detail-close" id="detailClose" aria-label="关闭详情">
-                    <span aria-hidden="true">×</span>
-                </button>
-            </div>
+        <!-- Detail Panel -->
+        <aside class="detail-panel" id="detailPanel" aria-label="技能详情面板" hidden>
+            <div class="detail-header" id="detailHeader"></div>
             <div class="detail-content" id="detailContent"></div>
             <div class="detail-actions">
                 <button class="detail-btn" id="detailToggle"></button>
             </div>
         </aside>
 
-        <!-- Tooltip (for hover preview) -->
+        <!-- Tooltip -->
         <div class="tooltip" id="tooltip" role="tooltip" aria-hidden="true">
             <div class="tooltip-header" id="ttHeader"></div>
             <div class="tooltip-meta" id="ttMeta"></div>
+            <div class="tooltip-divider"></div>
             <div class="tooltip-prereqs" id="ttPrereqs"></div>
             <div class="tooltip-status" id="ttStatus"></div>
         </div>
