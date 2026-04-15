@@ -35,6 +35,7 @@ const skills = [
 ];
 
 const skillMap = Object.fromEntries(skills.map(s => [s.id, s]));
+const modules = [...new Set(skills.map(s => s.module))];
 
 const modClassMap = {
   '环境搭建': 'mod-env',
@@ -60,19 +61,6 @@ const modColorMap = {
   '数据库': '#7a8a9a'
 };
 
-const modGlowMap = {
-  '环境搭建': 'rgba(107,155,126,0.35)',
-  '项目运行': 'rgba(107,143,184,0.35)',
-  'UI基础组件': 'rgba(184,154,110,0.35)',
-  '布局管理': 'rgba(155,122,184,0.35)',
-  '自定义UI': 'rgba(184,122,138,0.35)',
-  '页面导航': 'rgba(106,184,184,0.35)',
-  '图片加载': 'rgba(184,138,106,0.35)',
-  '媒体播放': 'rgba(138,138,122,0.35)',
-  '数据库': 'rgba(122,138,154,0.35)'
-};
-
-// Module descriptions for tooltips
 const modDescMap = {
   '环境搭建': '配置Android开发所需的各种工具和环境',
   '项目运行': '创建并运行你的第一个Android项目',
@@ -85,6 +73,16 @@ const modDescMap = {
   '数据库': 'SQLite和Room数据库的使用'
 };
 
+// State
+let completedSet = loadProgress() || new Set();
+let selectedSkillId = null;
+let activeModule = null;
+let activeView = 'all';
+let searchQuery = '';
+let zoomLevel = 100;
+let currentToast = null;
+
+// Helper functions
 function getGridXY(skill) {
   const gridX = 160;
   const gridY = 140;
@@ -110,12 +108,12 @@ function loadProgress() {
   }
 }
 
-function saveProgress(completedSet) {
+function saveProgress() {
   const data = { version: 1, completed: Array.from(completedSet) };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-function computeStates(completedSet) {
+function computeStates() {
   const states = {};
   for (const s of skills) states[s.id] = 'locked';
   let changed = true;
@@ -136,11 +134,23 @@ function computeStates(completedSet) {
   return states;
 }
 
-let completedSet = loadProgress() || new Set();
-let currentToast = null;
+function getTimeHours(timeStr) {
+  return parseFloat(timeStr.replace('h', '')) || 0;
+}
 
+function getCompletedHours() {
+  let total = 0;
+  for (const s of skills) {
+    if (completedSet.has(s.id)) {
+      total += getTimeHours(s.time);
+    }
+  }
+  return total;
+}
+
+// Toggle skill completion
 function toggleSkill(id) {
-  const states = computeStates(completedSet);
+  const states = computeStates();
   const state = states[id];
   const skill = skillMap[id];
 
@@ -150,7 +160,6 @@ function toggleSkill(id) {
   }
 
   if (state === 'completed') {
-    // Check if any dependent skills are completed
     const dependents = skills.filter(s => s.prereqs.includes(id) && completedSet.has(s.id));
     if (dependents.length > 0) {
       showToast('⚠️', '无法取消', `该技能是 ${dependents.map(d => d.name).join('、')} 的前置条件`, 'locked');
@@ -164,10 +173,12 @@ function toggleSkill(id) {
     showToast('✨', '技能已掌握', `恭喜！你已学会「${skill.name}」`, 'completed');
   }
 
-  saveProgress(completedSet);
+  saveProgress();
   render();
+  updateDetailPanel(id);
 }
 
+// Celebration effects
 function celebrateUnlock(id) {
   setTimeout(() => {
     const node = document.querySelector(`.skill-node[data-id="${id}"]`);
@@ -175,8 +186,6 @@ function celebrateUnlock(id) {
       createParticleBurst(node);
       node.classList.add('pop-anim');
       setTimeout(() => node.classList.remove('pop-anim'), 400);
-
-      // Create ripple effect
       createRipple(node);
     }
   }, 50);
@@ -221,16 +230,18 @@ function createParticleBurst(node) {
   }
 }
 
+// Reset progress
 function resetProgress() {
   if (!confirm('确定要重置所有技能进度吗？此操作不可恢复。')) return;
   completedSet.clear();
-  saveProgress(completedSet);
+  saveProgress();
   render();
   showToast('🗑️', '进度已重置', '所有学习进度已清空', 'unlocked');
 }
 
+// Complete all available
 function completeAllAvailable() {
-  const states = computeStates(completedSet);
+  const states = computeStates();
   let count = 0;
   for (const s of skills) {
     if (states[s.id] === 'unlocked') {
@@ -239,7 +250,7 @@ function completeAllAvailable() {
     }
   }
   if (count > 0) {
-    saveProgress(completedSet);
+    saveProgress();
     render();
     showToast('🎉', '批量完成', `已完成 ${count} 个可用技能`, 'completed');
   } else {
@@ -247,6 +258,7 @@ function completeAllAvailable() {
   }
 }
 
+// Render modules layer
 function renderModulesLayer() {
   const layer = document.getElementById('modulesLayer');
   layer.innerHTML = '';
@@ -264,14 +276,13 @@ function renderModulesLayer() {
     const maxY = Math.max(...ys) + 60;
     const el = document.createElement('div');
     el.className = `module-bg ${modClassMap[mod]}`;
+    if (activeModule === mod) el.classList.add('active');
     el.style.left = minX + 'px';
     el.style.top = minY + 'px';
     el.style.width = (maxX - minX) + 'px';
     el.style.height = (maxY - minY) + 'px';
-    el.title = mod;
     layer.appendChild(el);
 
-    // Add module label
     const label = document.createElement('div');
     label.className = 'module-label';
     label.textContent = mod;
@@ -282,13 +293,16 @@ function renderModulesLayer() {
   }
 }
 
+// Render connections
 function renderConnections(states) {
   const svg = document.getElementById('connections');
   svg.innerHTML = '';
   for (const s of skills) {
+    if (!shouldShowSkill(s, states)) continue;
     const childPos = getGridXY(s);
     for (const pid of s.prereqs) {
       const parent = skillMap[pid];
+      if (!shouldShowSkill(parent, states)) continue;
       const parentPos = getGridXY(parent);
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       const dx = childPos.cx - parentPos.cx;
@@ -315,6 +329,34 @@ function renderConnections(states) {
   }
 }
 
+// Check if skill should be shown based on filters
+function shouldShowSkill(skill, states) {
+  const state = states[skill.id];
+
+  // Search filter
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    if (!skill.name.toLowerCase().includes(query) &&
+        !skill.id.toLowerCase().includes(query) &&
+        !skill.module.toLowerCase().includes(query) &&
+        !skill.desc.toLowerCase().includes(query)) {
+      return false;
+    }
+  }
+
+  // Module filter
+  if (activeModule && skill.module !== activeModule) {
+    return false;
+  }
+
+  // View filter
+  if (activeView === 'completed' && state !== 'completed') return false;
+  if (activeView === 'unlocked' && state !== 'unlocked') return false;
+
+  return true;
+}
+
+// Render nodes
 function renderNodes(states) {
   const layer = document.getElementById('nodesLayer');
   layer.innerHTML = '';
@@ -322,23 +364,22 @@ function renderNodes(states) {
     const pos = getGridXY(s);
     const el = document.createElement('button');
     el.className = `skill-node ${modClassMap[s.module]} skill-${states[s.id]}`;
+    if (!shouldShowSkill(s, states)) el.classList.add('hidden');
+    if (selectedSkillId === s.id) el.classList.add('selected');
     el.style.left = (pos.cx - 28) + 'px';
     el.style.top = (pos.cy - 28) + 'px';
     el.setAttribute('aria-pressed', states[s.id] === 'completed' ? 'true' : 'false');
     el.setAttribute('data-id', s.id);
 
-    // Add progress ring for unlocked nodes
     if (states[s.id] === 'unlocked') {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('progress-ring');
       svg.setAttribute('viewBox', '0 0 72 72');
-
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.classList.add('progress-ring-circle');
       circle.setAttribute('cx', '36');
       circle.setAttribute('cy', '36');
       circle.setAttribute('r', '34');
-
       const fill = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       fill.classList.add('progress-ring-fill');
       fill.setAttribute('cx', '36');
@@ -347,7 +388,6 @@ function renderNodes(states) {
       fill.setAttribute('stroke', modColorMap[s.module]);
       fill.setAttribute('stroke-dasharray', `${2 * Math.PI * 34}`);
       fill.setAttribute('stroke-dashoffset', `${2 * Math.PI * 34 * 0.3}`);
-
       svg.appendChild(circle);
       svg.appendChild(fill);
       el.appendChild(svg);
@@ -371,9 +411,8 @@ function renderNodes(states) {
     el.appendChild(icon);
     el.appendChild(badge);
 
-    el.addEventListener('click', (e) => {
-      createRippleAtPoint(el, e.offsetX, e.offsetY);
-      toggleSkill(s.id);
+    el.addEventListener('click', () => {
+      selectSkill(s.id);
     });
 
     el.addEventListener('mouseenter', (e) => showTooltip(e, s, states));
@@ -385,38 +424,23 @@ function renderNodes(states) {
   }
 }
 
-function createRippleAtPoint(node, x, y) {
-  const ripple = document.createElement('div');
-  ripple.className = 'ripple';
-  const color = modColorMap[skillMap[node.dataset.id].module];
-  ripple.style.color = color;
-  ripple.style.width = '16px';
-  ripple.style.height = '16px';
-  ripple.style.left = (x - 8) + 'px';
-  ripple.style.top = (y - 8) + 'px';
-  node.appendChild(ripple);
-  setTimeout(() => ripple.remove(), 600);
-}
-
-function renderProgress(states) {
-  const total = skills.length;
+// Render sidebar stats
+function renderSidebarStats(states) {
   const completed = skills.filter(s => states[s.id] === 'completed').length;
   const unlocked = skills.filter(s => states[s.id] === 'unlocked').length;
-  const pct = Math.round((completed / total) * 100);
+  const locked = skills.filter(s => states[s.id] === 'locked').length;
+  const hours = getCompletedHours();
 
-  document.getElementById('totalProgress').textContent = pct + '%';
+  document.getElementById('statCompleted').textContent = completed;
+  document.getElementById('statUnlocked').textContent = unlocked;
+  document.getElementById('statLocked').textContent = locked;
+  document.getElementById('statHours').textContent = hours.toFixed(1) + 'h';
+}
 
-  // Update progress bar
-  const progressFill = document.getElementById('progressBarFill');
-  if (progressFill) {
-    progressFill.style.width = pct + '%';
-  }
-
-  // Update stats
-  const completedCount = document.getElementById('completedCount');
-  const unlockedCount = document.getElementById('unlockedCount');
-  if (completedCount) completedCount.textContent = completed;
-  if (unlockedCount) unlockedCount.textContent = unlocked;
+// Render module legend
+function renderLegend(states) {
+  const list = document.getElementById('legendList');
+  list.innerHTML = '';
 
   const byModule = {};
   for (const s of skills) {
@@ -425,135 +449,216 @@ function renderProgress(states) {
     if (states[s.id] === 'completed') byModule[s.module].completed++;
   }
 
-  const container = document.getElementById('moduleProgress');
-  container.innerHTML = '';
   for (const [mod, info] of Object.entries(byModule)) {
-    const badge = document.createElement('span');
-    badge.className = 'mod-badge';
-    badge.style.borderColor = info.color + '40';
-    badge.style.color = info.color;
-    const pct = Math.round((info.completed / info.total) * 100);
-    badge.innerHTML = `${mod} <span class="mod-progress">${info.completed}/${info.total}</span>`;
-    badge.title = `${mod}: ${pct}% 完成`;
-    container.appendChild(badge);
-  }
-}
-
-function render() {
-  const states = computeStates(completedSet);
-  renderModulesLayer();
-  renderConnections(states);
-  renderNodes(states);
-  renderProgress(states);
-}
-
-function showToast(icon, title, message, type = 'info') {
-  // Remove existing toast
-  if (currentToast) {
-    currentToast.classList.add('hiding');
-    setTimeout(() => {
-      if (currentToast && currentToast.parentNode) {
-        currentToast.parentNode.removeChild(currentToast);
+    const li = document.createElement('li');
+    li.className = 'legend-item';
+    if (activeModule === mod) li.classList.add('active');
+    li.style.color = info.color;
+    li.innerHTML = `
+      <span class="legend-dot" style="background: ${info.color}"></span>
+      <span class="legend-name">${mod}</span>
+      <span class="legend-progress">${info.completed}/${info.total}</span>
+    `;
+    li.addEventListener('click', () => {
+      if (activeModule === mod) {
+        activeModule = null;
+      } else {
+        activeModule = mod;
       }
-    }, 300);
+      render();
+    });
+    list.appendChild(li);
   }
-
-  // Create container if needed
-  let container = document.getElementById('toastContainer');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toastContainer';
-    container.className = 'toast-container';
-    document.body.appendChild(container);
-  }
-
-  // Create toast
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-
-  const colors = {
-    completed: '#7eb88a',
-    unlocked: '#b89a6e',
-    locked: '#cf8888',
-    info: '#6b8fb8'
-  };
-
-  toast.style.borderLeft = `3px solid ${colors[type] || colors.info}`;
-
-  toast.innerHTML = `
-    <span class="toast-icon">${icon}</span>
-    <div class="toast-content">
-      <div class="toast-title">${title}</div>
-      <div class="toast-message">${message}</div>
-    </div>
-  `;
-
-  container.appendChild(toast);
-  currentToast = toast;
-
-  // Auto hide
-  setTimeout(() => {
-    if (toast.parentNode) {
-      toast.classList.add('hiding');
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-        if (currentToast === toast) {
-          currentToast = null;
-        }
-      }, 300);
-    }
-  }, 3500);
 }
 
-const tooltip = document.getElementById('tooltip');
-const ttTitle = document.getElementById('ttTitle');
-const ttMeta = document.getElementById('ttMeta');
-const ttPrereqs = document.getElementById('ttPrereqs');
-const ttStatus = document.getElementById('ttStatus');
-const ttHeader = document.getElementById('ttHeader');
+// Render next steps
+function renderNextSteps(states) {
+  const list = document.getElementById('nextList');
+  list.innerHTML = '';
 
-function showTooltip(e, s, states) {
-  // Update header with icon
-  ttHeader.innerHTML = `
-    <span class="tooltip-icon">${s.icon}</span>
-    <div class="tooltip-title-wrap">
-      <div class="tooltip-title">${s.name}</div>
-      <div class="tooltip-id">${s.id}</div>
-    </div>
-  `;
+  const unlockedSkills = skills.filter(s => states[s.id] === 'unlocked');
+  const recommended = unlockedSkills.slice(0, 3);
 
-  // Update meta info
+  if (recommended.length === 0) {
+    list.innerHTML = '<li class="next-empty">完成技能后查看推荐</li>';
+    return;
+  }
+
+  for (const s of recommended) {
+    const li = document.createElement('li');
+    li.className = 'next-item';
+    li.innerHTML = `
+      <span class="next-icon">${s.icon}</span>
+      <div class="next-info">
+        <span class="next-name">${s.name}</span>
+        <span class="next-meta">${s.time} · 难度 ${s.diff}/5</span>
+      </div>
+    `;
+    li.addEventListener('click', () => selectSkill(s.id));
+    list.appendChild(li);
+  }
+}
+
+// Update header progress
+function renderHeaderProgress(states) {
+  const total = skills.length;
+  const completed = skills.filter(s => states[s.id] === 'completed').length;
+  const pct = Math.round((completed / total) * 100);
+
+  document.getElementById('headerProgress').textContent = pct + '%';
+  document.getElementById('headerProgressFill').style.width = pct + '%';
+}
+
+// Select skill
+function selectSkill(id) {
+  const states = computeStates();
+  const skill = skillMap[id];
+
+  if (selectedSkillId === id) {
+    // Toggle completion
+    toggleSkill(id);
+    return;
+  }
+
+  selectedSkillId = id;
+  renderNodes(states);
+  showDetailPanel(skill, states);
+}
+
+// Show detail panel
+function showDetailPanel(skill, states) {
+  const panel = document.getElementById('detailPanel');
+  const content = document.getElementById('detailContent');
+  const btn = document.getElementById('detailToggle');
+
+  panel.hidden = false;
+  panel.setAttribute('aria-hidden', 'false');
+
+  const state = states[skill.id];
   const stars = Array(5).fill(0).map((_, i) =>
-    `<span class="star ${i < s.diff ? 'filled' : ''}">★</span>`
+    `<span class="star ${i < skill.diff ? 'filled' : ''}">★</span>`
   ).join('');
 
-  ttMeta.innerHTML = `
-    <span class="tooltip-module" style="color: ${modColorMap[s.module]}">
-      <span class="tooltip-module-dot" style="background: ${modColorMap[s.module]}"></span>
-      ${s.module}
-    </span>
-    <span class="tooltip-time">⏱ ${s.time}</span>
-    <span class="tooltip-difficulty" title="难度: ${s.diff}/5">${stars}</span>
+  let prereqHtml = '';
+  if (skill.prereqs.length > 0) {
+    const prereqItems = skill.prereqs.map(pid => {
+      const p = skillMap[pid];
+      const met = states[pid] === 'completed';
+      return `
+        <div class="detail-prereq" data-id="${pid}">
+          <span class="detail-prereq-status ${met ? 'met' : 'missing'}">${met ? '✓' : '○'}</span>
+          <div class="detail-prereq-info">
+            <span class="detail-prereq-name">${p.name}</span>
+            <span class="detail-prereq-id">${pid}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    prereqHtml = `
+      <div class="detail-section">
+        <h4 class="detail-section-title">前置技能</h4>
+        <div class="detail-prereq-list">${prereqItems}</div>
+      </div>
+    `;
+  }
+
+  content.innerHTML = `
+    <div class="detail-icon">${skill.icon}</div>
+    <h3 class="detail-title">${skill.name}</h3>
+    <span class="detail-id">${skill.id}</span>
+    <div class="detail-meta">
+      <span class="detail-tag" style="color: ${modColorMap[skill.module]}">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: ${modColorMap[skill.module]}"></span>
+        ${skill.module}
+      </span>
+      <span class="detail-tag">⏱ ${skill.time}</span>
+      <span class="detail-tag">${stars}</span>
+    </div>
+    <div class="detail-desc">${skill.desc}</div>
+    ${prereqHtml}
   `;
 
-  // Update status
-  const state = states[s.id];
+  // Update button
+  if (state === 'locked') {
+    btn.className = 'detail-btn locked';
+    btn.textContent = '🔒 未解锁';
+    btn.disabled = true;
+  } else if (state === 'completed') {
+    btn.className = 'detail-btn reset';
+    btn.textContent = '↩️ 重置进度';
+    btn.disabled = false;
+    btn.onclick = () => toggleSkill(skill.id);
+  } else {
+    btn.className = 'detail-btn complete';
+    btn.textContent = '✨ 标记完成';
+    btn.disabled = false;
+    btn.onclick = () => toggleSkill(skill.id);
+  }
+
+  // Add click handlers for prereqs
+  content.querySelectorAll('.detail-prereq').forEach(el => {
+    el.addEventListener('click', () => selectSkill(el.dataset.id));
+  });
+}
+
+// Update detail panel
+function updateDetailPanel(id) {
+  if (selectedSkillId === id) {
+    const states = computeStates();
+    const skill = skillMap[id];
+    showDetailPanel(skill, states);
+  }
+}
+
+// Hide detail panel
+function hideDetailPanel() {
+  const panel = document.getElementById('detailPanel');
+  panel.hidden = true;
+  panel.setAttribute('aria-hidden', 'true');
+  selectedSkillId = null;
+  const states = computeStates();
+  renderNodes(states);
+}
+
+// Tooltip
+const tooltip = document.getElementById('tooltip');
+
+function showTooltip(e, skill, states) {
+  const state = states[skill.id];
+  const stars = Array(5).fill(0).map((_, i) =>
+    `<span class="star ${i < skill.diff ? 'filled' : ''}">★</span>`
+  ).join('');
+
+  document.getElementById('ttHeader').innerHTML = `
+    <span class="tooltip-icon">${skill.icon}</span>
+    <div class="tooltip-title-wrap">
+      <div class="tooltip-title">${skill.name}</div>
+      <div class="tooltip-id">${skill.id}</div>
+    </div>
+  `;
+
+  document.getElementById('ttMeta').innerHTML = `
+    <span class="tooltip-module" style="color: ${modColorMap[skill.module]}">
+      <span class="tooltip-module-dot" style="background: ${modColorMap[skill.module]}"></span>
+      ${skill.module}
+    </span>
+    <span class="tooltip-time">⏱ ${skill.time}</span>
+    <span class="tooltip-difficulty">${stars}</span>
+  `;
+
   const statusMap = {
     locked: { cls: 'locked', text: '🔒 未解锁 - 完成前置技能' },
     unlocked: { cls: 'unlocked', text: '✨ 可学习 - 点击标记为完成' },
     completed: { cls: 'completed', text: '✅ 已完成 - 点击取消完成' }
   };
   const st = statusMap[state];
-  ttStatus.className = 'tooltip-status ' + st.cls;
-  ttStatus.textContent = st.text;
+  document.getElementById('ttStatus').className = 'tooltip-status ' + st.cls;
+  document.getElementById('ttStatus').textContent = st.text;
 
-  // Update prereqs
-  if (s.prereqs.length === 0) {
-    ttPrereqs.innerHTML = '';
+  if (skill.prereqs.length === 0) {
+    document.getElementById('ttPrereqs').innerHTML = '';
   } else {
-    const prereqItems = s.prereqs.map(pid => {
+    const prereqItems = skill.prereqs.map(pid => {
       const p = skillMap[pid];
       const met = states[pid] === 'completed';
       return `
@@ -566,12 +671,10 @@ function showTooltip(e, s, states) {
         </div>
       `;
     }).join('');
-    ttPrereqs.innerHTML = `
+    document.getElementById('ttPrereqs').innerHTML = `
       <div class="tooltip-divider"></div>
       <div class="tooltip-prereqs-label">前置技能</div>
-      <div class="prereq-list">
-        ${prereqItems}
-      </div>
+      <div class="prereq-list">${prereqItems}</div>
     `;
   }
 
@@ -580,7 +683,6 @@ function showTooltip(e, s, states) {
   let left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
   let top = rect.top - tooltip.offsetHeight - 16;
 
-  // Boundary checks
   if (left < 12) left = 12;
   if (left + tooltip.offsetWidth > window.innerWidth - 12) {
     left = window.innerWidth - tooltip.offsetWidth - 12;
@@ -598,11 +700,116 @@ function hideTooltip() {
   tooltip.classList.remove('visible');
 }
 
+// Toast
+function showToast(icon, title, message, type = 'info') {
+  if (currentToast) {
+    currentToast.classList.add('hiding');
+    setTimeout(() => currentToast?.remove(), 300);
+  }
+
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+
+  const colors = {
+    completed: '#7eb88a',
+    unlocked: '#b89a6e',
+    locked: '#cf8888',
+    info: '#6b8fb8'
+  };
+
+  toast.style.borderLeft = `3px solid ${colors[type] || colors.info}`;
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    </div>
+  `;
+
+  container.appendChild(toast);
+  currentToast = toast;
+
+  setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => {
+      toast.remove();
+      if (currentToast === toast) currentToast = null;
+    }, 300);
+  }, 3500);
+}
+
+// Zoom controls
+function setZoom(level) {
+  zoomLevel = Math.max(50, Math.min(200, level));
+  const container = document.getElementById('treeContainer');
+  container.style.transform = `scale(${zoomLevel / 100})`;
+  document.getElementById('zoomLevel').textContent = zoomLevel + '%';
+}
+
+function fitToWindow() {
+  const container = document.getElementById('treeContainer');
+  const parent = container.parentElement;
+  const containerWidth = 1200;
+  const parentWidth = parent.clientWidth - 120;
+  const scale = Math.min(100, Math.round((parentWidth / containerWidth) * 100));
+  setZoom(scale);
+}
+
+// Search
+function handleSearch(e) {
+  searchQuery = e.target.value.trim();
+  render();
+}
+
+// View filter
+function setView(view) {
+  activeView = view;
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.id === `view${view.charAt(0).toUpperCase() + view.slice(1)}`);
+    btn.setAttribute('aria-pressed', btn.id === `view${view.charAt(0).toUpperCase() + view.slice(1)}`);
+  });
+  render();
+}
+
+// Sidebar toggle
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed');
+}
+
+// Main render
+function render() {
+  const states = computeStates();
+  renderModulesLayer();
+  renderConnections(states);
+  renderNodes(states);
+  renderSidebarStats(states);
+  renderLegend(states);
+  renderNextSteps(states);
+  renderHeaderProgress(states);
+}
+
+// Event listeners
+document.getElementById('resetBtn').addEventListener('click', resetProgress);
+document.getElementById('completeAllBtn').addEventListener('click', completeAllAvailable);
+document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+document.getElementById('detailClose').addEventListener('click', hideDetailPanel);
+document.getElementById('skillSearch').addEventListener('input', handleSearch);
+
+document.getElementById('zoomIn').addEventListener('click', () => setZoom(zoomLevel + 10));
+document.getElementById('zoomOut').addEventListener('click', () => setZoom(zoomLevel - 10));
+document.getElementById('zoomFit').addEventListener('click', fitToWindow);
+
+document.getElementById('viewAll').addEventListener('click', () => setView('all'));
+document.getElementById('viewCompleted').addEventListener('click', () => setView('completed'));
+document.getElementById('viewUnlocked').addEventListener('click', () => setView('unlocked'));
+
 // Keyboard navigation
 let focusedNodeIndex = -1;
 
 document.addEventListener('keydown', (e) => {
-  const nodes = document.querySelectorAll('.skill-node:not(.skill-locked)');
+  const nodes = document.querySelectorAll('.skill-node:not(.skill-locked):not(.hidden)');
   if (nodes.length === 0) return;
 
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -621,25 +828,23 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === 'r' && e.ctrlKey) {
     e.preventDefault();
     resetProgress();
+  } else if (e.key === 'Escape') {
+    hideDetailPanel();
+    hideTooltip();
+  } else if (e.key === '/') {
+    e.preventDefault();
+    document.getElementById('skillSearch').focus();
   }
 });
-
-// Event listeners
-document.getElementById('resetBtn').addEventListener('click', resetProgress);
-
-const completeAllBtn = document.getElementById('completeAllBtn');
-if (completeAllBtn) {
-  completeAllBtn.addEventListener('click', completeAllAvailable);
-}
 
 // Initial render
 render();
 
-// Welcome toast on first visit
+// Welcome toast
 setTimeout(() => {
-  const hasVisited = localStorage.getItem('skill_tree_visited');
+  const hasVisited = localStorage.getItem('skill_tree_visited_v2');
   if (!hasVisited) {
-    showToast('👋', '欢迎使用技能树', '点击可学习的技能标记为完成，悬停查看详情', 'info');
-    localStorage.setItem('skill_tree_visited', '1');
+    showToast('👋', '欢迎使用技能树', '点击技能查看详情，使用 / 键快速搜索', 'info');
+    localStorage.setItem('skill_tree_visited_v2', '1');
   }
 }, 1000);
