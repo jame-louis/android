@@ -1,8 +1,0 @@
-<!-- 按钮填满整个宽度 -->
-<Button
-    android:layout_width="0dp"
-    android:layout_height="wrap_content"
-    android:text="全宽"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent" />

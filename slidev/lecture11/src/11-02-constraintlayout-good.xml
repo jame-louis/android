@@ -1,8 +1,0 @@
-<!-- 新方法：ConstraintLayout（好） -->
-<androidx.constraintlayout.widget.ConstraintLayout>
-    <TextView />
-    <Button />
-    <ImageView />
-    <TextView />
-</androidx.constraintlayout.widget.ConstraintLayout>
-<!-- 结果：扁平层级、快速渲染 -->
