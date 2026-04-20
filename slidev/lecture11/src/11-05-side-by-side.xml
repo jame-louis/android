@@ -1,0 +1,15 @@
+<Button
+    android:id="@+id/buttonFirst"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="第一个"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent" />
+
+<Button
+    android:id="@+id/buttonSecond"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="第二个"
+    app:layout_constraintStart_toEndOf="@id/buttonFirst"
+    app:layout_constraintTop_toTopOf="@id/buttonFirst" />
