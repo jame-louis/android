@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android 图片浏览器 - 分步教程</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        header h1 {
+            font-size: 2.8em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        header p {
+            font-size: 1.3em;
+            opacity: 0.9;
+            font-weight: 300;
+            position: relative;
+        }
+
+        /* Progress */
+        .progress-section {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            margin-bottom: 32px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .progress-title {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .progress-value {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1em;
+        }
+
+        .progress-bar {
+            background: var(--border);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        /* Step Cards */
+        .step-card {
+            background: var(--card);
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .step-card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .step-card.completed {
+            border-color: var(--success);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            padding: 24px;
+            cursor: pointer;
+            background: linear-gradient(to right, rgba(99, 102, 241, 0.05), transparent);
+            transition: background 0.2s;
+        }
+
+        .step-header:hover {
+            background: linear-gradient(to right, rgba(99, 102, 241, 0.1), transparent);
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-right: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .step-number.completed {
+            background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);
+        }
+
+        .step-title-wrap {
+            flex: 1;
+        }
+
+        .step-title {
+            font-size: 1.3em;
+            color: var(--text);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .step-subtitle {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .step-toggle {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .step-toggle:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .step-toggle svg {
+            transition: transform 0.3s ease;
+        }
+
+        .step-toggle.expanded svg {
+            transform: rotate(180deg);
+        }
+
+        .step-content {
+            padding: 0 24px 24px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Hint Box */
+        .hint-box {
+            background: linear-gradient(to right, #fef3c7, #fffbeb);
+            border-left: 4px solid var(--warning);
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 0 12px 12px 0;
+            position: relative;
+        }
+
+        .hint-box::before {
+            content: '💡';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            font-size: 1.5em;
+            background: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .hint-box strong {
+            color: #92400e;
+            font-weight: 600;
+        }
+
+        /* Code Block */
+        pre.code-block {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+            margin: 16px 0;
+            line-height: 1.6;
+            white-space: pre;
+            word-wrap: normal;
+            tab-size: 4;
+        }
+
+        code {
+            background: #f1f5f9;
+            color: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+
+        .comment { color: #6c7086; font-style: italic; }
+        .keyword { color: #cba6f7; font-weight: 600; }
+        .string { color: #a6e3a1; }
+        .tag { color: #f38ba8; }
+        .attr { color: #89b4fa; }
+        .number { color: #fab387; }
+
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        .checklist li {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+            background: var(--bg);
+        }
+
+        .checklist li:hover {
+            background: #e0e7ff;
+        }
+
+        .checklist li.checked {
+            background: #dcfce7;
+        }
+
+        .checklist li .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--primary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .checklist li.checked .checkbox {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .checklist li .checkbox::after {
+            content: '✓';
+            color: white;
+            font-weight: bold;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s;
+        }
+
+        .checklist li.checked .checkbox::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Tables */
+        .attr-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+
+        .attr-table th,
+        .attr-table td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .attr-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+
+        .attr-table tr:hover td {
+            background: #f8fafc;
+        }
+
+        .attr-table code {
+            background: #e0e7ff;
+            color: var(--primary-dark);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        /* Diagram */
+        .diagram {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px dashed #7dd3fc;
+            padding: 24px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 16px;
+        }
+
+        .diagram-box {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 6px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .root {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border: 2px solid #3b82f6;
+            color: #1e40af;
+        }
+        .view {
+            background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+            border: 2px solid #a855f7;
+            color: #6b21a8;
+        }
+        .layout {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            border: 2px solid #22c55e;
+            color: #15803d;
+        }
+
+        /* Content elements */
+        h2.section-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin: 32px 0 16px;
+            color: var(--text);
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        h3.subsection-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin: 24px 0 12px;
+            color: var(--primary-dark);
+        }
+
+        p {
+            margin: 12px 0;
+        }
+
+        ol, ul {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 2px solid #86efac;
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 32px;
+        }
+
+        .summary-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            margin-bottom: 16px;
+        }
+
+        .summary-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #166534;
+        }
+
+        .summary-icon {
+            font-size: 1.5em;
+        }
+
+        /* Reset Button */
+        .reset-btn {
+            background: white;
+            border: 2px solid var(--border);
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.2s;
+            margin-top: 16px;
+        }
+
+        .reset-btn:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: #fef2f2;
+        }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            header h1 { font-size: 2em; }
+            .step-content { padding: 0 16px 16px; }
+            .step-header { padding: 16px; }
+            .diagram-box { padding: 10px 16px; font-size: 0.85em; }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>📱 Android 图片浏览器</h1>
+            <p>从零开始构建你的第一个 Android 应用</p>
+        </header>
+
+        <div class="container">
+            <!-- 进度条 -->
+            <div class="progress-section">
+                <div class="progress-header">
+                    <span class="progress-title">学习进度</span>
+                    <span class="progress-value">{{ completedSteps }} / {{ totalSteps }} 步骤已完成</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+                </div>
+            </div>
+
+            <!-- 步骤 1 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(0) }">
+                <div class="step-header" @click="toggleStep(0)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(0) }">1</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">理解布局结构</div>
+                        <div class="step-subtitle">掌握 Android 视图层次的基本概念</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[0]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[0]?.expanded">
+                    <p>在编写代码之前，先理解图片浏览器的布局层次结构：</p>
+
+                    <div class="diagram">
+                        <div class="diagram-box root">LinearLayout (Vertical)<br>根容器</div>
+                        <div style="font-size: 2em; color: #3b82f6;">↓</div>
+                        <div>
+                            <div class="diagram-box view">TextView<br>图片标题</div>
+                            <div class="diagram-box view">ImageView<br>图片显示</div>
+                            <div class="diagram-box layout">LinearLayout (Horizontal)<br>按钮容器</div>
+                        </div>
+                        <div style="font-size: 2em; color: #22c55e;">↓</div>
+                        <div>
+                            <div class="diagram-box" style="background: linear-gradient(135deg, #ffedd5, #fed7aa); border: 2px solid #f97316; color: #9a3412;">Button<br>上一张</div>
+                            <div class="diagram-box" style="background: linear-gradient(135deg, #ffedd5, #fed7aa); border: 2px solid #f97316; color: #9a3412;">Button<br>下一张</div>
+                        </div>
+                    </div>
+
+                    <div class="hint-box">
+                        <strong>核心概念：</strong>根 LinearLayout 使用 <code>android:orientation="vertical"</code> 让子视图垂直排列。按钮容器使用 <code>android:orientation="horizontal"</code> 让按钮并排显示。
+                    </div>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[0]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(0, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 2 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(1) }">
+                <div class="step-header" @click="toggleStep(1)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(1) }">2</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">创建 XML 布局</div>
+                        <div class="step-subtitle">编写界面布局文件</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[1]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[1]?.expanded">
+                    <p>打开 <code>res/layout/activity_main.xml</code> 文件，创建布局结构。</p>
+
+                    <div class="hint-box">
+                        <strong>提示：</strong>使用 <code>xmlns:android="http://schemas.android.com/apk/res/android"</code> 作为命名空间声明。
+                    </div>
+
+                    <h3 class="subsection-title">LinearLayout 核心属性</h3>
+                    <table class="attr-table">
+                        <tr>
+                            <th>属性</th>
+                            <th>说明</th>
+                            <th>常用值</th>
+                        </tr>
+                        <tr>
+                            <td><code>android:orientation</code></td>
+                            <td>子视图排列方向</td>
+                            <td>"vertical", "horizontal"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:layout_width</code></td>
+                            <td>布局宽度</td>
+                            <td>"match_parent", "wrap_content"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:layout_height</code></td>
+                            <td>布局高度</td>
+                            <td>"match_parent", "wrap_content"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:padding</code></td>
+                            <td>内边距</td>
+                            <td>"16dp", "8dp"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:gravity</code></td>
+                            <td>子视图对齐方式</td>
+                            <td>"center", "center_horizontal"</td>
+                        </tr>
+                    </table>
+
+                    <h3 class="subsection-title">分步构建布局</h3>
+
+                    <h4>2.1 根 LinearLayout</h4>
+                    <div class="hint-box">
+                        <strong>提示：</strong>创建一个垂直方向的 LinearLayout 填满整个屏幕，并添加一些内边距让界面更美观。
+                    </div>
+
+                    <h4>2.2 添加标题 TextView</h4>
+                    <div class="hint-box">
+                        <strong>提示：</strong>TextView 常用属性：
+                        <ul style="margin: 8px 0 0 20px;">
+                            <li><code>android:textSize</code> - 试试 "24sp" 作为标题</li>
+                            <li><code>android:textStyle</code> - "bold" 加粗</li>
+                            <li><code>android:gravity</code> - "center" 居中</li>
+                            <li><code>android:layout_marginBottom</code> - 底部间距</li>
+                        </ul>
+                    </div>
+
+                    <h4>2.3 添加 ImageView</h4>
+                    <div class="hint-box">
+                        <strong>提示：</strong>ImageView 关键属性：
+                        <ul style="margin: 8px 0 0 20px;">
+                            <li><code>android:layout_width</code> - "match_parent" 或具体 dp</li>
+                            <li><code>android:layout_height</code> - "0dp" 配合 weight</li>
+                            <li><code>android:layout_weight</code> - "1" 填充可用空间</li>
+                            <li><code>android:scaleType</code> - "centerCrop" 或 "fitCenter"</li>
+                            <li><code>android:src</code> - 引用 drawable (如 @drawable/image1)</li>
+                        </ul>
+                    </div>
+
+                    <h4>2.4 添加按钮容器</h4>
+                    <div class="hint-box">
+                        <strong>提示：</strong>创建一个水平方向的 LinearLayout 来放置两个按钮。添加 margin-top 将其与 ImageView 分开。
+                    </div>
+
+                    <h4>2.5 添加上一张/下一张按钮</h4>
+                    <div class="hint-box">
+                        <strong>提示：</strong>每个按钮需要：
+                        <ul style="margin: 8px 0 0 20px;">
+                            <li><code>android:layout_width</code> - "0dp" (使用 weight)</li>
+                            <li><code>android:layout_height</code> - "wrap_content"</li>
+                            <li><code>android:layout_weight</code> - "1" (等宽)</li>
+                            <li><code>android:text</code> - "上一张" 或 "下一张"</li>
+                            <li><code>android:id</code> - @+id/btnPrevious, @+id/btnNext</li>
+                        </ul>
+                    </div>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[1]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(1, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 3 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(2) }">
+                <div class="step-header" @click="toggleStep(2)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(2) }">3</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">添加图片资源</div>
+                        <div class="step-subtitle">准备显示的图片文件</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[2]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[2]?.expanded">
+                    <p>应用需要图片来显示。你需要将图片资源添加到项目中。</p>
+
+                    <h3 class="subsection-title">图片存放位置</h3>
+                    <p>将图片放在: <code>res/drawable/</code></p>
+
+                    <div class="hint-box">
+                        <strong>支持的格式：</strong>
+                        <ul style="margin: 8px 0 0 20px;">
+                            <li>PNG (推荐，支持透明)</li>
+                            <li>JPG/JPEG (用于照片)</li>
+                            <li>WebP (现代格式，体积更小)</li>
+                            <li>Vector Drawables (XML 格式，可缩放)</li>
+                        </ul>
+                    </div>
+
+                    <h3 class="subsection-title">命名规范</h3>
+                    <div class="hint-box">
+                        <strong>重要：</strong>Android 资源名必须：
+                        <ul style="margin: 8px 0 0 20px;">
+                            <li>以小写字母开头</li>
+                            <li>只能包含小写字母 a-z、数字 0-9 和下划线</li>
+                            <li>不能有空格、大写字母</li>
+                        </ul>
+                        <p style="margin-top: 12px;">
+                            ✅ 正确: <code>image1.png</code>, <code>nature_photo.jpg</code>, <code>cat_01.png</code><br>
+                            ❌ 错误: <code>Image 1.png</code>, <code>1st-image.jpg</code>
+                        </p>
+                    </div>
+
+                    <h3 class="subsection-title">测试用图</h3>
+                    <p>如果没有准备图片，可以使用 Android 内置图标：</p>
+<pre class="code-block"><span class="comment">&lt;!-- 在 ImageView 中使用系统图标 --&gt;</span>
+android:src="@android:drawable/ic_menu_gallery"
+android:src="@android:drawable/ic_menu_camera"</pre>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[2]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(2, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 4 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(3) }">
+                <div class="step-header" @click="toggleStep(3)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(3) }">4</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">编写 Java 代码</div>
+                        <div class="step-subtitle">实现应用逻辑</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[3]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[3]?.expanded">
+                    <p>现在编写 Java 代码让应用具有交互性。你将在 <code>MainActivity.java</code> 中工作。</p>
+
+                    <h3 class="subsection-title">4.1 声明视图引用</h3>
+                    <p>在类级别声明对视图的引用：</p>
+<pre class="code-block"><span class="keyword">public class</span> MainActivity <span class="keyword">extends</span> AppCompatActivity {
+
+    <span class="comment">// 在此声明视图引用</span>
+    <span class="comment">// 思考：我需要与哪些视图交互？</span>
+
+    <span class="comment">// 你需要引用：</span>
+    <span class="comment">// - ImageView（用于更改显示的图片）</span>
+    <span class="comment">// - TextView（用于更新标题）</span>
+    <span class="comment">// - Button（用于处理点击事件）</span>
+
+    <span class="comment">// 提示：使用视图类型后跟变量名</span>
+    <span class="comment">// 示例：TextView textViewTitle;</span>
+}</pre>
+
+                    <h3 class="subsection-title">4.2 在 onCreate() 中查找视图</h3>
+                    <p>在 <code>onCreate()</code> 方法中，在 <code>setContentView()</code> 之后查找视图：</p>
+                    <div class="hint-box">
+                        <strong>提示：</strong>使用 <code>findViewById()</code> 从 XML 布局获取视图引用。
+                        <br><br>
+                        语法：<code>viewReference = findViewById(R.id.viewId);</code>
+                        <br><br>
+                        将 <code>viewReference</code> 替换为你的变量名，<code>viewId</code> 替换为 XML 中定义的 ID（例如 R.id.btnPrevious）。
+                    </div>
+
+                    <h3 class="subsection-title">4.3 设置图片数据</h3>
+                    <p>创建数组存储图片资源和标题：</p>
+<pre class="code-block"><span class="comment">// 图片资源 ID 数组（来自 drawable 文件夹）</span>
+<span class="comment">// 替换为你实际的图片资源名</span>
+<span class="keyword">private int</span>[] images = {
+    R.drawable.image1,
+    R.drawable.image2,
+    R.drawable.image3
+    <span class="comment">// 根据需要添加更多图片</span>
+};
+
+<span class="comment">// 图片标题数组</span>
+<span class="keyword">private</span> String[] titles = {
+    <span class="string">"图片 1"</span>,
+    <span class="string">"图片 2"</span>,
+    <span class="string">"图片 3"</span>
+};
+
+<span class="comment">// 当前图片索引</span>
+<span class="keyword">private int</span> currentIndex = 0;</pre>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[3]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(3, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 5 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(4) }">
+                <div class="step-header" @click="toggleStep(4)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(4) }">5</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">处理按钮点击</div>
+                        <div class="step-subtitle">实现上一张/下一张功能</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[4]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[4]?.expanded">
+                    <p>现在使用 <code>setOnClickListener</code> 让按钮具有实际功能。</p>
+
+                    <h3 class="subsection-title">5.1 理解 OnClickListener</h3>
+                    <p><code>setOnClickListener</code> 方法接收一个 <code>OnClickListener</code> 对象，定义按钮点击时的行为：</p>
+
+<pre class="code-block"><span class="comment">// setOnClickListener 语法模式</span>
+buttonReference.setOnClickListener(<span class="keyword">new</span> View.OnClickListener() {
+    <span class="keyword">@Override</span>
+    <span class="keyword">public void</span> onClick(View v) {
+        <span class="comment">// 点击按钮时执行的代码</span>
+    }
+});</pre>
+
+                    <h3 class="subsection-title">5.2 实现"上一张"按钮逻辑</h3>
+                    <div class="hint-box">
+                        <strong>实现逻辑：</strong>
+                        <ol style="margin: 8px 0 0 20px;">
+                            <li>当前索引减 1</li>
+                            <li>检查是否小于 0</li>
+                            <li>如果是，循环到最后一张图片 (images.length - 1)</li>
+                            <li>更新 ImageView 显示新图片</li>
+                            <li>更新 TextView 显示新标题</li>
+                        </ol>
+                    </div>
+
+                    <h3 class="subsection-title">5.3 实现"下一张"按钮逻辑</h3>
+                    <div class="hint-box">
+                        <strong>实现逻辑：</strong>
+                        <ol style="margin: 8px 0 0 20px;">
+                            <li>当前索引加 1</li>
+                            <li>检查是否大于等于 images.length</li>
+                            <li>如果是，循环到第一张图片 (0)</li>
+                            <li>更新 ImageView 显示新图片</li>
+                            <li>更新 TextView 显示新标题</li>
+                        </ol>
+                    </div>
+
+                    <h3 class="subsection-title">5.4 创建辅助方法</h3>
+                    <p>由于两个按钮都需要更新显示，创建一个辅助方法：</p>
+
+<pre class="code-block"><span class="comment">// 辅助方法：更新显示</span>
+<span class="keyword">private void</span> updateDisplay() {
+    <span class="comment">// 设置图片资源到 ImageView</span>
+    <span class="comment">// 提示：使用 setImageResource()</span>
+
+    <span class="comment">// 设置文本到 TextView</span>
+    <span class="comment">// 提示：使用 setText()</span>
+}</pre>
+
+                    <div class="hint-box">
+                        <strong>别忘了！</strong> 在 <code>onCreate()</code> 方法中调用 <code>updateDisplay()</code>，这样应用启动时会显示第一张图片。
+                    </div>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[4]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(4, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 6 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(5) }">
+                <div class="step-header" @click="toggleStep(5)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(5) }">6</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">核心属性参考</div>
+                        <div class="step-subtitle">常用属性速查表</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[5]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[5]?.expanded">
+
+                    <h3 class="subsection-title">TextView - 常用属性</h3>
+                    <table class="attr-table">
+                        <tr>
+                            <th>属性</th>
+                            <th>说明</th>
+                            <th>示例</th>
+                        </tr>
+                        <tr>
+                            <td><code>android:text</code></td>
+                            <td>显示文本</td>
+                            <td>"图片 1"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:textSize</code></td>
+                            <td>字体大小（用 sp）</td>
+                            <td>"24sp"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:textColor</code></td>
+                            <td>文本颜色</td>
+                            <td>"#000000"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:textStyle</code></td>
+                            <td>字体样式</td>
+                            <td>"bold", "italic"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:gravity</code></td>
+                            <td>文本对齐</td>
+                            <td>"center", "left"</td>
+                        </tr>
+                    </table>
+
+                    <h3 class="subsection-title">ImageView - 常用属性</h3>
+                    <table class="attr-table">
+                        <tr>
+                            <th>属性</th>
+                            <th>说明</th>
+                            <th>示例</th>
+                        </tr>
+                        <tr>
+                            <td><code>android:src</code></td>
+                            <td>显示的图片</td>
+                            <td>"@drawable/image1"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:scaleType</code></td>
+                            <td>图片缩放方式</td>
+                            <td>"centerCrop", "fitCenter"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:adjustViewBounds</code></td>
+                            <td>保持宽高比</td>
+                            <td>"true"</td>
+                        </tr>
+                    </table>
+
+                    <h3 class="subsection-title">Button - 常用属性</h3>
+                    <table class="attr-table">
+                        <tr>
+                            <th>属性</th>
+                            <th>说明</th>
+                            <th>示例</th>
+                        </tr>
+                        <tr>
+                            <td><code>android:text</code></td>
+                            <td>按钮文字</td>
+                            <td>"上一张", "下一张"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:background</code></td>
+                            <td>按钮背景</td>
+                            <td>"@drawable/btn_bg"</td>
+                        </tr>
+                        <tr>
+                            <td><code>android:id</code></td>
+                            <td>唯一标识</td>
+                            <td>"@+id/btnPrevious"</td>
+                        </tr>
+                    </table>
+
+                    <h3 class="subsection-title">layout_weight 详解</h3>
+                    <p><code>layout_weight</code> 属性对于响应式布局至关重要，它决定额外空间如何在子视图间分配。</p>
+
+                    <div class="hint-box">
+                        <strong>工作原理：</strong>
+                        <ol style="margin: 8px 0 0 20px;">
+                            <li>水平方向设置 <code>layout_width="0dp"</code>，垂直方向设置 <code>layout_height="0dp"</code></li>
+                            <li>通过 weight 值按比例分配空间</li>
+                            <li>相等 weight = 相等分配</li>
+                        </ol>
+                        <p style="margin-top: 12px;"><strong>示例：</strong>两个按钮都设置 <code>layout_weight="1"</code> 将平分空间 50-50。</p>
+                    </div>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[5]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(5, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 7 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(6) }">
+                <div class="step-header" @click="toggleStep(6)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(6) }">7</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">测试与调试</div>
+                        <div class="step-subtitle">排查常见问题</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[6]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[6]?.expanded">
+                    <h3 class="subsection-title">常见问题与解决方案</h3>
+
+                    <table class="attr-table">
+                        <tr>
+                            <th>问题</th>
+                            <th>可能原因</th>
+                            <th>解决方案</th>
+                        </tr>
+                        <tr>
+                            <td>应用启动崩溃</td>
+                            <td>findViewById 在 setContentView 之前调用</td>
+                            <td>确保 setContentView 先执行</td>
+                        </tr>
+                        <tr>
+                            <td>图片不显示</td>
+                            <td>资源名错误或不在 drawable 中</td>
+                            <td>检查文件名匹配，代码中不加扩展名</td>
+                        </tr>
+                        <tr>
+                            <td>按钮无响应</td>
+                            <td>未设置 OnClickListener</td>
+                            <td>确认调用了 setOnClickListener</td>
+                        </tr>
+                        <tr>
+                            <td>按钮大小不一致</td>
+                            <td>layout_weight 设置不正确</td>
+                            <td>layout_width="0dp" 配合 layout_weight</td>
+                        </tr>
+                    </table>
+
+                    <h3 class="subsection-title">调试技巧</h3>
+                    <ul>
+                        <li>使用 <code>Log.d("TAG", "message")</code> 添加调试输出</li>
+                        <li>应用崩溃时查看 logcat 错误信息</li>
+                        <li>在 Android Studio 中使用断点逐步调试</li>
+                        <li>验证 R.id 引用与 XML 中的 ID 匹配</li>
+                    </ul>
+
+                    <div class="hint-box">
+                        <strong>记住：</strong>修改 Java 代码后，可能需要重新构建项目 (Build → Make Project 或 Ctrl+F9)。
+                    </div>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[6]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(6, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 步骤 8 -->
+            <div class="step-card" :class="{ completed: isStepCompleted(7) }">
+                <div class="step-header" @click="toggleStep(7)">
+                    <div class="step-number" :class="{ completed: isStepCompleted(7) }">8</div>
+                    <div class="step-title-wrap">
+                        <div class="step-title">挑战：功能扩展</div>
+                        <div class="step-subtitle">进阶练习提升技能</div>
+                    </div>
+                    <div class="step-toggle" :class="{ expanded: steps[7]?.expanded }">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="step-content" v-show="steps[7]?.expanded">
+                    <p>完成基础应用后，尝试以下扩展功能来练习你的技能：</p>
+
+                    <h3 class="subsection-title">初级挑战</h3>
+                    <div class="hint-box">
+                        <strong>1. 添加计数器显示</strong>
+                        <p>在按钮下方用 TextView 显示 "第 X 张，共 Y 张"。需要使用 + 运算符连接字符串。</p>
+                    </div>
+                    <div class="hint-box">
+                        <strong>2. 添加图片描述</strong>
+                        <p>创建另一个字符串数组存储图片描述，显示在标题下方。</p>
+                    </div>
+                    <div class="hint-box">
+                        <strong>3. 边界禁用按钮</strong>
+                        <p>不循环切换，而是在第一张禁用"上一张"按钮，最后一张禁用"下一张"按钮。使用 <code>setEnabled(false)</code>。</p>
+                    </div>
+
+                    <h3 class="subsection-title">中级挑战</h3>
+                    <div class="hint-box">
+                        <strong>4. 添加滑动手势</strong>
+                        <p>研究 <code>GestureDetector</code> 并实现左右滑动切换图片。</p>
+                    </div>
+                    <div class="hint-box">
+                        <strong>5. 添加缩放功能</strong>
+                        <p>使用 <code>PhotoView</code> 库或为 ImageView 实现双指缩放。</p>
+                    </div>
+                    <div class="hint-box">
+                        <strong>6. 添加动画效果</strong>
+                        <p>切换图片时添加淡入淡出或滑动过渡。了解 <code>ViewPropertyAnimator</code> 或 <code>ObjectAnimator</code>。</p>
+                    </div>
+
+                    <h3 class="subsection-title">高级挑战</h3>
+                    <div class="hint-box">
+                        <strong>7. 从网络加载图片</strong>
+                        <p>使用 Glide 或 Picasso 库从 URL 加载图片，而非本地资源。</p>
+                    </div>
+                    <div class="hint-box">
+                        <strong>8. 添加缩略图网格</strong>
+                        <p>添加第二个 Activity，用 GridView 显示所有缩略图，点击打开主视图对应位置。</p>
+                    </div>
+
+                    <h3 class="subsection-title">完成任务：</h3>
+                    <ul class="checklist">
+                        <li v-for="(item, idx) in steps[7]?.checklist" :key="idx" :class="{ checked: item.checked }" @click="toggleCheck(7, idx)">
+                            <span class="checkbox"></span>
+                            <span>{{ item.text }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 总结卡片 -->
+            <div class="summary-card">
+                <div class="summary-header" @click="showSummary = !showSummary">
+                    <span class="summary-icon">📋</span>
+                    <span class="summary-title">快速参考</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; transition: transform 0.3s;" :style="{ transform: showSummary ? 'rotate(180deg)' : '' }">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+                <div v-show="showSummary">
+                    <h3 class="subsection-title">XML 布局模板</h3>
+<pre class="code-block">&lt;LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"&gt;
+
+    &lt;TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:gravity="center" /&gt;
+
+    &lt;ImageView
+        android:id="@+id/ivImage"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scaleType="centerCrop" /&gt;
+
+    &lt;LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"&gt;
+
+        &lt;Button
+            android:id="@+id/btnPrevious"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="上一张" /&gt;
+
+        &lt;Button
+            android:id="@+id/btnNext"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="下一张" /&gt;
+    &lt;/LinearLayout&gt;
+&lt;/LinearLayout&gt;</pre>
+
+                    <h3 class="subsection-title">Java 关键方法</h3>
+                    <table class="attr-table">
+                        <tr>
+                            <th>方法</th>
+                            <th>用途</th>
+                            <th>示例</th>
+                        </tr>
+                        <tr>
+                            <td><code>findViewById()</code></td>
+                            <td>从 XML 获取视图</td>
+                            <td>imageView = findViewById(R.id.ivImage);</td>
+                        </tr>
+                        <tr>
+                            <td><code>setImageResource()</code></td>
+                            <td>设置图片</td>
+                            <td>imageView.setImageResource(R.drawable.image1);</td>
+                        </tr>
+                        <tr>
+                            <td><code>setText()</code></td>
+                            <td>设置文本</td>
+                            <td>textView.setText("图片标题");</td>
+                        </tr>
+                        <tr>
+                            <td><code>setOnClickListener()</code></td>
+                            <td>处理点击</td>
+                            <td>button.setOnClickListener(listener);</td>
+                        </tr>
+                    </table>
+
+                    <button class="reset-btn" @click="resetProgress">重置进度</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    showSummary: false,
+                    steps: [
+                        {
+                            expanded: true,
+                            checklist: [
+                                { text: '理解垂直 LinearLayout 作为根容器', checked: false },
+                                { text: '理解 TextView 在层次中的位置', checked: false },
+                                { text: '理解水平 LinearLayout 用于放置按钮', checked: false },
+                                { text: '理解 layout_weight 概念用于等大小按钮', checked: false }
+                            ]
+                        },
+                        {
+                            expanded: false,
+                            checklist: [
+                                { text: '创建根 LinearLayout 并设置垂直方向', checked: false },
+                                { text: '添加 TextView 并设置 id、textSize、gravity', checked: false },
+                                { text: '添加 ImageView 并设置 id、scaleType、layout_weight', checked: false },
+                                { text: '创建水平 LinearLayout 作为按钮容器', checked: false },
+                                { text: '添加上一张/下一张按钮并设置 layout_weight="1"', checked: false },
+                                { text: '所有视图都设置了正确的 android:id', checked: false }
+                            ]
+                        },
+                        {
+                            expanded: false,
+                            checklist: [
+                                { text: '向 res/drawable/ 添加至少 3 张图片', checked: false },
+                                { text: '图片文件名遵循命名规范（小写，无空格）', checked: false },
+                                { text: '验证图片在 Android Studio 的 drawable 文件夹中可见', checked: false }
+                            ]
+                        },
+                        {
+                            expanded: false,
+                            checklist: [
+                                { text: '在 MainActivity 中声明视图引用作为类成员', checked: false },
+                                { text: '在 onCreate() 中使用 findViewById() 获取引用', checked: false },
+                                { text: '创建 int[] 数组存储图片资源 ID', checked: false },
+                                { text: '创建 String[] 数组存储图片标题', checked: false },
+                                { text: '声明 currentIndex 变量跟踪当前位置', checked: false }
+                            ]
+                        },
+                        {
+                            expanded: false,
+                            checklist: [
+                                { text: '为"上一张"按钮实现 setOnClickListener', checked: false },
+                                { text: '为"下一张"按钮实现 setOnClickListener', checked: false },
+                                { text: '上一张按钮实现索引递减并循环', checked: false },
+                                { text: '下一张按钮实现索引递增并循环', checked: false },
+                                { text: '创建 updateDisplay() 辅助方法', checked: false },
+                                { text: '在 onCreate() 中调用 updateDisplay() 显示初始图片', checked: false },
+                                { text: '在两个按钮点击处理中都调用 updateDisplay()', checked: false }
+                            ]
+                        },
+                        {
+                            expanded: false,
+                            checklist: [
+                                { text: '查看并理解所有 TextView 属性表', checked: false },
+                                { text: '查看并理解所有 ImageView 属性表', checked: false },
+                                { text: '查看并理解所有 Button 属性表', checked: false },
+                                { text: '理解 layout_weight 概念及何时使用 0dp', checked: false }
+                            ]
+                        },
+                        {
+                            expanded: false,
+                            checklist: [
+                                { text: '应用启动不崩溃', checked: false },
+                                { text: '初始图片和标题正确显示', checked: false },
+                                { text: '上一张按钮正确循环图片', checked: false },
+                                { text: '下一张按钮正确循环图片', checked: false },
+                                { text: '列表两端循环功能正常', checked: false },
+                                { text: '在模拟器或真机上测试通过', checked: false }
+                            ]
+                        }
+                    ]
+                };
+            },
+            computed: {
+                completedSteps() {
+                    return this.steps.filter((s, i) => this.isStepCompleted(i)).length;
+                },
+                totalSteps() {
+                    return this.steps.length;
+                },
+                progressPercentage() {
+                    return (this.completedSteps / this.totalSteps) * 100;
+                }
+            },
+            methods: {
+                toggleStep(index) {
+                    const step = this.steps[index];
+                    if (step) step.expanded = !step.expanded;
+                },
+                toggleCheck(stepIndex, itemIndex) {
+                    const step = this.steps[stepIndex];
+                    if (!step || !step.checklist) return;
+                    const item = step.checklist[itemIndex];
+                    if (item) item.checked = !item.checked;
+                },
+                isStepCompleted(index) {
+                    const step = this.steps[index];
+                    return step && step.checklist && step.checklist.every(i => i.checked);
+                },
+                resetProgress() {
+                    if (!confirm('确定要重置所有进度吗？')) return;
+                    for (const step of this.steps) {
+                        if (!step || !step.checklist) continue;
+                        for (const item of step.checklist) item.checked = false;
+                    }
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
