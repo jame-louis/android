@@ -1,0 +1,8 @@
+import{$ as e,B as t,C as n,D as r,S as i,bt as a,v as o,vt as s,y as c}from"./modules/shiki-BJVPiDca.js";import{nt as l,rt as u}from"./index-CLx9La6I.js";import{t as d}from"./slidev/CodeBlockWrapper-DIbbb0Lw.js";import{t as f}from"./slidev/default-D_3E_1Db.js";var p={class:`text-center`},m={class:`inline-block text-left bg-green-50 p-6 rounded-lg`},h={__name:`slides.md__slidev_47`,setup(h){let{$slidev:g,$nav:_,$clicksContext:v,$clicks:y,$page:b,$renderContext:x,$frontmatter:S}=u();return v.setup(),(u,h)=>{let g=d;return t(),c(f,a(r(s(l)(s(S),46))),{default:e(()=>[h[3]||=o(`h1`,null,`✅ Capstone 自检清单`,-1),o(`div`,p,[h[2]||=o(`h3`,null,`最终验收标准`,-1),o(`div`,m,[n(g,{title:``,ranges:[]},{default:e(()=>[...h[0]||=[o(`pre`,{class:`shiki shiki-themes vitesse-dark vitesse-light slidev-code`,style:{"--shiki-dark":`#dbd7caee`,"--shiki-light":`#393a34`,"--shiki-dark-bg":`#121212`,"--shiki-light-bg":`#ffffff`}},[o(`code`,{class:`language-text`},[o(`span`,{class:`line`},[o(`span`,null,`□ 首次安装App显示登录界面`)]),i(`
+`),o(`span`,{class:`line`},[o(`span`,null,`□ 输入正确用户名/密码 → 跳转到HomeActivity`)]),i(`
+`),o(`span`,{class:`line`},[o(`span`,null,`□ 点击"去注册" → 跳转到RegisterActivity`)]),i(`
+`),o(`span`,{class:`line`},[o(`span`,null,`□ 注册新用户 → 数据库中有该用户（哈希密码）`)]),i(`
+`),o(`span`,{class:`line`},[o(`span`,null,`□ 重启App → 自动跳转到HomeActivity（跳过登录）`)]),i(`
+`),o(`span`,{class:`line`},[o(`span`,null,`□ HomeActivity显示欢迎语和当前用户名`)]),i(`
+`),o(`span`,{class:`line`},[o(`span`,null,`□ 点击"退出登录" → 清除登录状态并返回登录页`)]),i(`
+`),o(`span`,{class:`line`},[o(`span`,null,`□ 点击"查看用户列表" → 显示所有注册用户`)])])],-1)]]),_:1}),h[1]||=o(`div`,{class:`mt-4 text-orange-600`},[o(`p`,null,[o(`strong`,null,`全部通过 = 今日课程完成！🎉`)])],-1)])])]),_:1},16)}}};export{h as default};
